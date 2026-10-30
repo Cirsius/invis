@@ -1,0 +1,5 @@
+name: invis
+version: '${version}'
+main: net.cirsius.invis.Invis
+commands:
+  invis: {}
