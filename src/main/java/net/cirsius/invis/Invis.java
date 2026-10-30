@@ -82,12 +82,12 @@ public final class Invis extends JavaPlugin implements Listener {
             player.sendMessage("§cyou don't have permission to use this");
             return true;
         }
-        Set<UUID> next = new HashSet<>(invisible);
-        if (hidden) next.add(player.getUniqueId());
-        else next.remove(player.getUniqueId());
         YamlConfiguration state = new YamlConfiguration();
-        List<String> ids = new ArrayList<>();
-        for (UUID id : next) ids.add(id.toString());
+        List<String> ids = new ArrayList<>(invisible.size() + 1);
+        for (UUID id : invisible) {
+            if (!id.equals(player.getUniqueId())) ids.add(id.toString());
+        }
+        if (hidden) ids.add(player.getUniqueId().toString());
         Collections.sort(ids);
         state.set("invisible", ids);
         try {
@@ -97,10 +97,11 @@ public final class Invis extends JavaPlugin implements Listener {
             player.sendMessage("§ccouldn't save invisibility, try again");
             return true;
         }
-        invisible.clear();
-        invisible.addAll(next);
-        if (hidden) activate(player);
-        else {
+        if (hidden) {
+            invisible.add(player.getUniqueId());
+            activate(player);
+        } else {
+            invisible.remove(player.getUniqueId());
             deactivate(player);
             update(player, false);
         }
@@ -147,7 +148,7 @@ public final class Invis extends JavaPlugin implements Listener {
     }
 
     private void activate(Player player) {
-        active.add(player);
+        if (active.add(player)) player.setMetadata("invis.active", new FixedMetadataValue(this, true));
         update(player, true);
         if (upkeep == null) {
             upkeep = getServer().getScheduler().runTaskTimer(this, () -> {
@@ -172,9 +173,7 @@ public final class Invis extends JavaPlugin implements Listener {
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("couldn't change invisibility", error);
         }
-        if (hidden && !target.hasMetadata("invis.active")) {
-            target.setMetadata("invis.active", new FixedMetadataValue(this, true));
-        } else if (!hidden) {
+        if (!hidden) {
             target.removeMetadata("invis.active", this);
             if (effect != null) {
                 target.removePotionEffect(PotionEffectType.INVISIBILITY);
